@@ -1,0 +1,8 @@
+# My .gitignore file
+
+A2PIClientAux.prop
+*.json
+
+/nbproject/private/
+/build/
+/dist/
