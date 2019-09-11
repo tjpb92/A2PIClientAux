@@ -4,11 +4,14 @@ import bdd.Fa2pi;
 import bdd.Fa2piDAO;
 import bkgpi2a.AssociateProviderContactWithPatrimony;
 import bkgpi2a.DissociateProviderContactFromPatrimony;
+import static bkgpi2a.EventType.PROVIDER_CONTACT_ASSOCIATED_WITH_PATRIMONY;
+import static bkgpi2a.EventType.PROVIDER_CONTACT_DISSOCIATED_FROM_PATRIMONY;
 import bkgpi2a.HttpsClient;
 import bkgpi2a.Identifiants;
 import bkgpi2a.ProviderContactDissociatedFromPatrimony;
 import bkgpi2a.WebServer;
 import bkgpi2a.WebServerException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -26,7 +29,7 @@ import utils.GetArgsException;
  * entre Anstel et Performance Immo (lien montant)
  *
  * @author Thierry Baribaud
- * @version 1.03
+ * @version 1.04
  */
 public class A2PIClientAux {
 
@@ -48,9 +51,10 @@ public class A2PIClientAux {
      * A2PIClientAux.prop.
      */
     private Identifiants apiId;
-    
+
     /**
-     * limit ; nombre maximum d'événéments traités lors d'une exécution du programme
+     * limit ; nombre maximum d'événéments traités lors d'une exécution du
+     * programme
      */
     private int limit = 10000;
 
@@ -80,7 +84,7 @@ public class A2PIClientAux {
      * @throws java.sql.SQLException en cas d'erreur SQL
      * @throws WebServerException en cas d'erreur avec le serveur API.
      */
-    public A2PIClientAux(String[] args) throws GetArgsException, IOException, DBServerException, ClassNotFoundException, SQLException, WebServerException {
+    public A2PIClientAux(String[] args) throws GetArgsException, IOException, DBServerException, ClassNotFoundException, SQLException, WebServerException, Exception {
         ApplicationProperties applicationProperties;
         DBServer ifxServer;
         DBManager informixDbManager;
@@ -123,6 +127,10 @@ public class A2PIClientAux {
         System.out.println("Ouverture de la connexion au site API : " + apiServer.getName());
         httpsClient = new HttpsClient(apiServer.getIpAddress(), apiId, debugMode, testMode);
         System.out.println("Connexion avec le server API ouverte.");
+        
+        System.out.println("Authentification en cours ...");
+        httpsClient.sendPost(HttpsClient.REST_API_PATH + HttpsClient.LOGIN_CMDE);
+        System.out.println("Authentification réussie.");
 
         System.out.println("Ouverture de la connexion au serveur Informix : " + ifxServer.getName());
         informixDbManager = new DBManager(ifxServer);
@@ -142,6 +150,7 @@ public class A2PIClientAux {
         Fa2pi fa2pi;
         int i;
         int retcode;
+        int evtType;
 //        ProviderContactAssociatedWithPatrimony providerContactAssociatedWithPatrimony;
         ProviderContactDissociatedFromPatrimony providerContactDissociatedFromPatrimony;
         AssociateProviderContactWithPatrimony associateProviderContactWithPatrimony;
@@ -157,22 +166,16 @@ public class A2PIClientAux {
             i++;
             retcode = -1;
             System.out.println("Fa2pi(" + i + ")=" + fa2pi);
-            
-            switch(fa2pi.getA10evttype()) {
-                case 470:   // ProviderContactAssociatedWithPatrimony
+
+            evtType = fa2pi.getA10evttype();
+            if (evtType == PROVIDER_CONTACT_ASSOCIATED_WITH_PATRIMONY.getUid()) {
 //                    providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
 //                    associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
-                    retcode = 1;
-                    break;
-                    
-                case 475:   // ProviderContactDissociatedFromPatrimony
-                    providerContactDissociatedFromPatrimony = new ProviderContactDissociatedFromPatrimony(fa2pi);
-                    System.out.println("  " + providerContactDissociatedFromPatrimony);
-//                    dissociateProviderContactFromPatrimony = new DissociateProviderContactFromPatrimony(providerContactDissociatedFromPatrimony);
-                    retcode = 1;
-                    break;
+                retcode = 1;
+            } else if (evtType == PROVIDER_CONTACT_DISSOCIATED_FROM_PATRIMONY.getUid()) {
+                retcode = processProviderContactDissociatedFromPatrimony(httpsClient, fa2pi);
             }
-            
+
             fa2pi.setA10status(retcode);
             if (retcode != 1) {
                 fa2pi.setA10nberr(1);
@@ -184,6 +187,41 @@ public class A2PIClientAux {
         fa2piDAO.closeSelectPreparedStatement();
         fa2piDAO.closeUpdatePreparedStatement();
 
+    }
+
+    /**
+     * Traitement de la dissociation entre un fournisseur (ProviderContact) et un patrimoine (Patrimony)
+     */
+    private int processProviderContactDissociatedFromPatrimony(HttpsClient httpsClient, Fa2pi fa2pi) {
+        ProviderContactDissociatedFromPatrimony providerContactDissociatedFromPatrimony;
+        DissociateProviderContactFromPatrimony dissociateProviderContactFromPatrimony;
+        String command;
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json;
+        int retcode = 0;
+        
+        providerContactDissociatedFromPatrimony = new ProviderContactDissociatedFromPatrimony(fa2pi);
+        System.out.println("  " + providerContactDissociatedFromPatrimony);
+        dissociateProviderContactFromPatrimony = new DissociateProviderContactFromPatrimony(providerContactDissociatedFromPatrimony);
+        System.out.println("  " + dissociateProviderContactFromPatrimony);
+        
+        command = HttpsClient.EVENT_API_PATH + HttpsClient.PROVIDER_CONTACTS_CMDE + "/" + providerContactDissociatedFromPatrimony.getAggregateUid();
+        if (debugMode) {
+            System.out.println("  Commande pour dissocier un fournisseur et un patimoine : " + command);
+        }
+        try {
+            json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dissociateProviderContactFromPatrimony);
+            System.out.println("  json:" + json);
+            
+            httpsClient.sendPatch(command, json);
+            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
+            System.out.println("  getResponse():" + httpsClient.getResponse());
+            retcode = 1;
+        } catch (Exception ex) {
+            retcode = -1;
+            Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return retcode;
     }
 
     /**
@@ -255,14 +293,16 @@ public class A2PIClientAux {
     }
 
     /**
-     * @return retourne le nombre maximum d'événéments traités lors d'une exécution du programme
+     * @return retourne le nombre maximum d'événéments traités lors d'une
+     * exécution du programme
      */
     public int getLimit() {
         return limit;
     }
 
     /**
-     * @param limit définit le nombre maximum d'événéments traités lors d'une exécution du programme
+     * @param limit définit le nombre maximum d'événéments traités lors d'une
+     * exécution du programme
      */
     public void setLimit(int limit) {
         this.limit = limit;
@@ -392,9 +432,11 @@ public class A2PIClientAux {
         System.out.println("Lancement de A2PIClientAux ...");
         try {
             a2PIClientAux = new A2PIClientAux(args);
+            System.out.println("Fin de A2ITclient.");
         } catch (GetArgsException | IOException | DBServerException | ClassNotFoundException | SQLException | WebServerException exception) {
             Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, exception);
-            System.out.println("Fin de A2ITclient.");
+        } catch (Exception ex) {
+            Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
