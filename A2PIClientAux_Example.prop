@@ -1,10 +1,10 @@
 # Properties for production environnement
-prod.apiserver.name=Production
-prod.apiserver.ip=1.2.3.4
-prod.apiserver.port=80
-prod.apiserver.path=api/v1/
-prod.apiserver.login=login
-prod.apiserver.passwd=password
+prod.webserver.name=Production
+prod.webserver.ip=1.2.3.4
+prod.webserver.port=80
+prod.webserver.path=api/v1/
+prod.webserver.login=login
+prod.webserver.passwd=password
 
 prod.ifxdb.name=prod
 prod.ifxdb.ip=1.2.3.5
@@ -18,12 +18,12 @@ prod.ifxdb.driverclass=com.informix.jdbc.IfxDriver
 prod.ifxdb.nb.thread=8
 
 # Properties for pre-production environnement
-pre-prod.apiserver.name=Pre-Production
-pre-prod.apiserver.ip=1.2.3.6
-pre-prod.apiserver.port=80
-pre-prod.apiserver.path=api/v1/
-pre-prod.apiserver.login=login
-pre-prod.apiserver.passwd=passwd
+pre-prod.webserver.name=Pre-Production
+pre-prod.webserver.ip=1.2.3.6
+pre-prod.webserver.port=80
+pre-prod.webserver.path=api/v1/
+pre-prod.webserver.login=login
+pre-prod.webserver.passwd=passwd
 
 pre-prod.ifxdb.name=pre-prod
 pre-prod.ifxdb.ip=1.2.3.7

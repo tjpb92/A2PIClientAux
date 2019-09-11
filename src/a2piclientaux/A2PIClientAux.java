@@ -6,6 +6,7 @@ import bkgpi2a.AssociateProviderContactWithPatrimony;
 import bkgpi2a.DissociateProviderContactFromPatrimony;
 import bkgpi2a.HttpsClient;
 import bkgpi2a.Identifiants;
+import bkgpi2a.ProviderContactDissociatedFromPatrimony;
 import bkgpi2a.WebServer;
 import bkgpi2a.WebServerException;
 import java.io.IOException;
@@ -25,7 +26,7 @@ import utils.GetArgsException;
  * entre Anstel et Performance Immo (lien montant)
  *
  * @author Thierry Baribaud
- * @version 1.02
+ * @version 1.03
  */
 public class A2PIClientAux {
 
@@ -47,6 +48,11 @@ public class A2PIClientAux {
      * A2PIClientAux.prop.
      */
     private Identifiants apiId;
+    
+    /**
+     * limit ; nombre maximum d'événéments traités lors d'une exécution du programme
+     */
+    private int limit = 10000;
 
     /**
      * debugMode : fonctionnement du programme en mode debug (true/false).
@@ -137,7 +143,7 @@ public class A2PIClientAux {
         int i;
         int retcode;
 //        ProviderContactAssociatedWithPatrimony providerContactAssociatedWithPatrimony;
-//        ProviderContactDissociatedFromPatrimony providerContactDissociatedFromPatrimony;
+        ProviderContactDissociatedFromPatrimony providerContactDissociatedFromPatrimony;
         AssociateProviderContactWithPatrimony associateProviderContactWithPatrimony;
         DissociateProviderContactFromPatrimony dissociateProviderContactFromPatrimony;
 
@@ -147,7 +153,7 @@ public class A2PIClientAux {
         fa2piDAO.setUpdatePreparedStatement();
         System.out.println("  SelectStatement=" + fa2piDAO.getSelectStatement());
         i = 0;
-        while ((fa2pi = fa2piDAO.select()) != null) {
+        while ((fa2pi = fa2piDAO.select()) != null && i < limit) {
             i++;
             retcode = -1;
             System.out.println("Fa2pi(" + i + ")=" + fa2pi);
@@ -160,7 +166,8 @@ public class A2PIClientAux {
                     break;
                     
                 case 475:   // ProviderContactDissociatedFromPatrimony
-//                    providerContactDissociatedFromPatrimony = new ProviderContactDissociatedFromPatrimony(fa2pi);
+                    providerContactDissociatedFromPatrimony = new ProviderContactDissociatedFromPatrimony(fa2pi);
+                    System.out.println("  " + providerContactDissociatedFromPatrimony);
 //                    dissociateProviderContactFromPatrimony = new DissociateProviderContactFromPatrimony(providerContactDissociatedFromPatrimony);
                     retcode = 1;
                     break;
@@ -231,20 +238,34 @@ public class A2PIClientAux {
         String value;
         Identifiants identifiants = new Identifiants();
 
-        value = applicationProperties.getProperty(getApiServerType() + ".apiserver.login");
+        value = applicationProperties.getProperty(getApiServerType() + ".webserver.login");
         if (value != null) {
             identifiants.setLogin(value);
         } else {
             throw new WebServerException("Nom utilisateur pour l'accès API non défini");
         }
 
-        value = applicationProperties.getProperty(getApiServerType() + ".apiserver.passwd");
+        value = applicationProperties.getProperty(getApiServerType() + ".webserver.passwd");
         if (value != null) {
             identifiants.setPassword(value);
         } else {
             throw new WebServerException("Mot de passe pour l'accès API non défini");
         }
         A2PIClientAux.this.setApiId(identifiants);
+    }
+
+    /**
+     * @return retourne le nombre maximum d'événéments traités lors d'une exécution du programme
+     */
+    public int getLimit() {
+        return limit;
+    }
+
+    /**
+     * @param limit définit le nombre maximum d'événéments traités lors d'une exécution du programme
+     */
+    public void setLimit(int limit) {
+        this.limit = limit;
     }
 
     /**
@@ -322,6 +343,22 @@ public class A2PIClientAux {
                         throw new GetArgsException("ERREUR : Serveur Informix non défini");
                     }
                     break;
+                case "-limit":
+                    if (ip1 < n) {
+                        try {
+                            this.limit = Integer.parseInt(nextParam);
+                            if (limit <= 0) {
+                                throw new GetArgsException("Le nombre maximum d'enregistrement(s) doit être positif : " + nextParam);
+                            } else {
+                                i = ip1;
+                            }
+                        } catch (Exception exception) {
+                            throw new GetArgsException("Le nombre maximum d'enregistrement(s) doit être numérique : " + nextParam);
+                        }
+                    } else {
+                        throw new GetArgsException("ERREUR : nombre maximum d'enregistrement(s) non défini");
+                    }
+                    break;
                 case "-d":
                     setDebugMode(true);
                     break;
@@ -342,6 +379,7 @@ public class A2PIClientAux {
     public static void usage() {
         System.out.println("Usage : java A2PIClientAux [-apiserver prod|pre-prod]"
                 + " [-ifxdb prod|pre-prod]"
+                + " [-limit limit]"
                 + " [-d] [-t]");
     }
 
@@ -370,6 +408,7 @@ public class A2PIClientAux {
         return "A2PIClientAux:{"
                 + "apiServerType:" + apiServerType
                 + ", ifxDbServerType:" + ifxDbServerType
+                + ", limit:" + limit
                 + ", debugMode:" + debugMode
                 + ", testMode:" + testMode
                 + "}";

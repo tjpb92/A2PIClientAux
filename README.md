@@ -3,11 +3,12 @@ Programme Java auxiliaire de a2pi-client permettant d'échanger des données entre
 
 ## Utilisation:
 ```
-java A2PIClientAux [-ifxdb prod|pre-prod] [-apiserver prod|pre-prod] [-d] [-t] 
+java A2PIClientAux [-ifxdb prod|pre-prod] [-apiserver prod|pre-prod] [-limit limit] [-d] [-t] 
 ```
 où :
 * ```-ifxdb prod|pre-prod``` est la référence à la base de données Informix, par défaut désigne la base de données de pré-production, voir fichier *A2PIClientAux.prop* (optionnel).
 * ```-apiserver prod|pre-prod``` est la référence au serveur d'API distant, par défaut désigne le serveur de pré-production, voir fichier *A2PIClientAux.prop* (paramètre optionnel).
+* ```-limit limit``` est le nombre maximum d'événement(s) traité(s) par exécution du programme, par défaut 10.000 (paramètre optionnel).
 * ```-d``` le programme s'exécute en mode débug, il est beaucoup plus verbeux. Désactivé par défaut (paramètre optionnel).
 * ```-t``` le programme s'exécute en mode test, les transactions en base de données ne sont pas faites. Désactivé par défaut (paramètre optionnel).
 
@@ -32,3 +33,7 @@ Le fichier *A2PIClientAux_Example.prop* est fourni à titre d'exemple.
 ## Références:
 
 - [Pour valider un Json](https://jsonformatter.curiousconcept.com/)
+
+### Conversion DateTime en TimeStamp et réciproquement
+- http://www.javacodex.com/Date-and-Time/Convert-DateTime-into-Timestamp
+- http://www.javacodex.com/Date-and-Time/Convert-Timestamp-into-DateTime
