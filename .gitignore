@@ -3,6 +3,10 @@
 A2PIClientAux.prop
 *.json
 
+# Le temps du développment ...
+LoginTest.java
+ProviderContactDissociatedFromPatrimonyTest.java
+
 /nbproject/private/
 /build/
 /dist/
