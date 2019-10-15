@@ -6,8 +6,8 @@ import bkgpi2a.AssociateProviderContactWithPatrimony;
 import bkgpi2a.DissociateProviderContactFromPatrimony;
 import static bkgpi2a.EventType.PROVIDER_CONTACT_ASSOCIATED_WITH_PATRIMONY;
 import static bkgpi2a.EventType.PROVIDER_CONTACT_DISSOCIATED_FROM_PATRIMONY;
-import bkgpi2a.HttpsClient;
 import bkgpi2a.Identifiants;
+import bkgpi2a.ProviderContactAssociatedWithPatrimony;
 import bkgpi2a.ProviderContactDissociatedFromPatrimony;
 import bkgpi2a.WebServer;
 import bkgpi2a.WebServerException;
@@ -29,7 +29,7 @@ import utils.GetArgsException;
  * entre Anstel et Performance Immo (lien montant)
  *
  * @author Thierry Baribaud
- * @version 1.04
+ * @version 1.06
  */
 public class A2PIClientAux {
 
@@ -129,7 +129,7 @@ public class A2PIClientAux {
         System.out.println("Connexion avec le server API ouverte.");
         
         System.out.println("Authentification en cours ...");
-        httpsClient.sendPost(HttpsClient.REST_API_PATH + HttpsClient.LOGIN_CMDE);
+        httpsClient.login(debugMode, testMode);
         System.out.println("Authentification réussie.");
 
         System.out.println("Ouverture de la connexion au serveur Informix : " + ifxServer.getName());
@@ -151,13 +151,14 @@ public class A2PIClientAux {
         int i;
         int retcode;
         int evtType;
-//        ProviderContactAssociatedWithPatrimony providerContactAssociatedWithPatrimony;
+        ProviderContactAssociatedWithPatrimony providerContactAssociatedWithPatrimony;
         ProviderContactDissociatedFromPatrimony providerContactDissociatedFromPatrimony;
         AssociateProviderContactWithPatrimony associateProviderContactWithPatrimony;
         DissociateProviderContactFromPatrimony dissociateProviderContactFromPatrimony;
 
         fa2piDAO = new Fa2piDAO(informixConnection);
         fa2piDAO.filterByStatus(400);
+        fa2piDAO.orderBy("a10laguid");
         fa2piDAO.setSelectPreparedStatement();
         fa2piDAO.setUpdatePreparedStatement();
         System.out.println("  SelectStatement=" + fa2piDAO.getSelectStatement());
@@ -169,9 +170,10 @@ public class A2PIClientAux {
 
             evtType = fa2pi.getA10evttype();
             if (evtType == PROVIDER_CONTACT_ASSOCIATED_WITH_PATRIMONY.getUid()) {
-//                    providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
-//                    associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
+                    providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
+                    associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
                 retcode = 1;
+                retcode = processProviderContactAssociatedWithPatrimony(httpsClient, fa2pi);
             } else if (evtType == PROVIDER_CONTACT_DISSOCIATED_FROM_PATRIMONY.getUid()) {
                 retcode = processProviderContactDissociatedFromPatrimony(httpsClient, fa2pi);
             }
@@ -187,6 +189,42 @@ public class A2PIClientAux {
         fa2piDAO.closeSelectPreparedStatement();
         fa2piDAO.closeUpdatePreparedStatement();
 
+    }
+
+
+    /**
+     * Traitement de l'association entre un fournisseur (ProviderContact) et un patrimoine (Patrimony)
+     */
+    private int processProviderContactAssociatedWithPatrimony(HttpsClient httpsClient, Fa2pi fa2pi) {
+        ProviderContactAssociatedWithPatrimony providerContactAssociatedWithPatrimony;
+        AssociateProviderContactWithPatrimony associateProviderContactWithPatrimony;
+        String command;
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json;
+        int retcode = 0;
+        
+        providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
+        System.out.println("  " + providerContactAssociatedWithPatrimony);
+        associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
+        System.out.println("  " + associateProviderContactWithPatrimony);
+        
+        command = HttpsClient.EVENT_API_PATH + HttpsClient.PROVIDER_CONTACTS_CMDE + "/" + providerContactAssociatedWithPatrimony.getAggregateUid();
+        if (debugMode) {
+            System.out.println("  Commande pour associer un fournisseur et un patrimoine : " + command);
+        }
+        try {
+            json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(associateProviderContactWithPatrimony);
+            System.out.println("  json:" + json);
+            
+            httpsClient.sendPatch(command, json);
+//            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
+//            System.out.println("  getResponse():" + httpsClient.getResponse());
+            retcode = 1;
+        } catch (Exception ex) {
+            retcode = -1;
+            Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return retcode;
     }
 
     /**
@@ -207,15 +245,15 @@ public class A2PIClientAux {
         
         command = HttpsClient.EVENT_API_PATH + HttpsClient.PROVIDER_CONTACTS_CMDE + "/" + providerContactDissociatedFromPatrimony.getAggregateUid();
         if (debugMode) {
-            System.out.println("  Commande pour dissocier un fournisseur et un patimoine : " + command);
+            System.out.println("  Commande pour dissocier un fournisseur et un patrimoine : " + command);
         }
         try {
             json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dissociateProviderContactFromPatrimony);
             System.out.println("  json:" + json);
             
             httpsClient.sendPatch(command, json);
-            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
-            System.out.println("  getResponse():" + httpsClient.getResponse());
+//            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
+//            System.out.println("  getResponse():" + httpsClient.getResponse());
             retcode = 1;
         } catch (Exception ex) {
             retcode = -1;

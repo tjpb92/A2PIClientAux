@@ -1,22 +1,26 @@
 package a2piclientaux;
 
 import bkgpi2a.Identifiants;
+import com.mashape.unirest.http.Headers;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 
-import java.net.URL;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import utils.HttpsClientException;
 
 /**
- * Classe réalisant des requetes GET/POST/PATCH en HTTPS.
- * Evolution de la classe HttpsClient du projet Bkgpi2a avec Unirest.
+ * Classe réalisant des requetes GET/POST/PATCH en HTTPS. Evolution de la classe
+ * HttpsClient du projet Bkgpi2a avec Unirest.
  *
  * @author Thierry Baribaud
- * @version 1.05
+ * @version 1.06
  */
 public class HttpsClient {
 
@@ -152,117 +156,73 @@ public class HttpsClient {
 
     /**
      * Méthode pour envoyer une requête HTTPS GET
+     *
      * @param Command commande à exécuter
      * @throws Exception en cas d'erreur
      */
-        public void sendGet(String Command) throws Exception {
+    public void sendGet(String Command) throws Exception {
 
-        String commandUrl;
-        URL url;
-        HttpsURLConnection connection;
-
-        commandUrl = baseUrl + Command;
-        url = new URL(commandUrl);
-        connection = (HttpsURLConnection) url.openConnection();
-
-        // optional default is GET
-        connection.setRequestMethod("GET");
-
-        //add request header
-        connection.setRequestProperty("User-Agent", USER_AGENT);
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.addRequestProperty("Cookie", getCookies());
-
-        System.out.println("Sending 'GET' request to URL : " + commandUrl);
-        getResponseCode(connection);
-        setAcceptRange(connection.getHeaderField("Accept-Range"));
-        System.out.println("Accept-Range : " + getAcceptRange());
-        setContentRange(connection.getHeaderField("Content-Range"));
-        System.out.println("Content-Range : " + getContentRange());
-        HttpsClient.this.getResponse(connection);
-        connection.disconnect();
+        throw new HttpsClientException("sendGet() à réécrire");
     }
 
     /**
      * Méthode pour envoyer une requête HTTPS POST
-     * @param Command commande à exécuter
+     *
+     * @param command commande à exécuter
+     * @param json paramètres au format Json
      * @throws Exception en cas d'erreur
      */
-        public void sendPost(String Command) throws Exception {
+    public void sendPost(String command, String json) throws Exception {
 
-        String commandUrl;
-        URL url;
-        HttpsURLConnection connection;
-        DataOutputStream dataOutputStream;
-        String urlParameters;
+        HttpResponse<JsonNode> jsonResponse;
 
-        commandUrl = baseUrl + Command;
-        urlParameters = identifiants.toJson();
+        jsonResponse = Unirest.patch(baseUrl + command)
+                .header("User-Agent", USER_AGENT)
+                .header("Content-Type", "application/json")
+                .header("Set-Cookie", cookies)
+                .body(json)
+                .asJson();
 
-        url = new URL(commandUrl);
-        connection = (HttpsURLConnection) url.openConnection();
+        responseCode = jsonResponse.getStatus();
+        response = jsonResponse.getBody().toString();
+        if (debugMode) {
+            System.out.println("responseCode:" + responseCode);
+            System.out.println("response:" + response);
+        }
 
-        //add request header
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("User-Agent", USER_AGENT);
-        connection.setRequestProperty("Content-Type", "application/json");
-
-        // Send post request
-        connection.setDoOutput(true);
-        dataOutputStream = new DataOutputStream(connection.getOutputStream());
-        dataOutputStream.writeBytes(urlParameters);
-        dataOutputStream.flush();
-        dataOutputStream.close();
-
-        System.out.println("Sending 'POST' request to URL : " + commandUrl);
-        if (debugMode) System.out.println("Post parameters : " + urlParameters);
-        getResponseCode(connection);
-        HttpsClient.this.getCookies(connection);
-        HttpsClient.this.getResponse(connection);
-        connection.disconnect();
+        if (responseCode != 200) {
+            throw new HttpsClientException();
+        }
     }
 
     /**
      * Méthode pour envoyer une requête HTTPS PATCH
-     * @param Command commande à exécuter
-     * @param urlParameters paramètres au format Json
+     *
+     * @param command commande à exécuter
+     * @param json paramètres au format Json
      * @throws Exception en cas d'erreur
      */
-        public void sendPatch(String Command, String urlParameters) throws Exception {
+    public void sendPatch(String command, String json) throws Exception {
 
-        String commandUrl;
-        URL url;
-        HttpsURLConnection connection;
-        DataOutputStream dataOutputStream;
+        HttpResponse<JsonNode> jsonResponse;
 
-        commandUrl = baseUrl + Command;
-//        commandUrl = "https://anstel-dev.performance-immo.com" + Command;
+        jsonResponse = Unirest.patch(baseUrl + command)
+                .header("User-Agent", USER_AGENT)
+                .header("Content-Type", "application/json")
+                .header("Set-Cookie", cookies)
+                .body(json)
+                .asJson();
 
-        url = new URL(commandUrl);
-        connection = (HttpsURLConnection) url.openConnection();
+        responseCode = jsonResponse.getStatus();
+        response = jsonResponse.getBody().toString();
+        if (debugMode) {
+            System.out.println("responseCode:" + responseCode);
+            System.out.println("response:" + response);
+        }
 
-        //add request header
-//        connection.setRequestMethod("PATCH");
-        connection.setRequestProperty("X-HTTP-Method-Override", "PATCH");
-        connection.setRequestMethod("POST");
-        
-        connection.setRequestProperty("User-Agent", USER_AGENT);
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.addRequestProperty("Cookie", getCookies());
-        if (debugMode) System.out.println("Cooekies : " + getCookies());
-        // Send post request
-        connection.setDoOutput(true);
-        dataOutputStream = new DataOutputStream(connection.getOutputStream());
-        dataOutputStream.writeBytes(urlParameters);
-        dataOutputStream.flush();
-        dataOutputStream.close();
-
-        System.out.println("Sending 'PATCH' request to URL : " + commandUrl);
-        if (debugMode) System.out.println("Patch parameters : " + urlParameters);
-        getResponseCode(connection);
-//        HttpsClient.this.getCookies(connection);
-        HttpsClient.this.getResponse(connection);
-        connection.disconnect();
+        if (responseCode != 200) {
+            throw new HttpsClientException();
+        }
     }
 
     private void getCookies(HttpsURLConnection MyConnection) {
@@ -413,5 +373,43 @@ public class HttpsClient {
      */
     public boolean getTestMode() {
         return (testMode);
+    }
+
+    /**
+     * Connexion à l'API
+     *
+     * @param debugMode indicateur du mode debug
+     * @param testMode indicateur du mode test
+     * @throws com.mashape.unirest.http.exceptions.UnirestException
+     * @throws utils.HttpsClientException
+     */
+    public void login(boolean debugMode, boolean testMode) throws UnirestException, HttpsClientException {
+        HttpResponse<JsonNode> jsonResponse;
+        Headers headers;
+
+        jsonResponse = Unirest.post(baseUrl + REST_API_PATH + LOGIN_CMDE)
+                .header("User-Agent", USER_AGENT)
+                .header("Content-Type", "application/json")
+                .body(identifiants.toJson())
+                .asJson();
+        responseCode = jsonResponse.getStatus();
+        response = jsonResponse.getBody().toString();
+        if (debugMode) {
+            System.out.println("responseCode:" + responseCode);
+            System.out.println("response:" + response);
+        }
+
+        if (responseCode == 200) {
+            headers = jsonResponse.getHeaders();
+            if (debugMode) {
+                System.out.println("headers" + headers);
+            }
+            cookies = headers.get("Set-Cookie").get(0);
+            if (debugMode) {
+                System.out.println("cookies:" + cookies);
+            }
+        } else {
+            throw new HttpsClientException();
+        }
     }
 }
