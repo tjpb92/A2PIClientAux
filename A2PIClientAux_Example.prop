@@ -1,37 +1,39 @@
-# Properties for production environnement
-prod.webserver.name=Production
-prod.webserver.ip=1.2.3.4
+# Properties for xyz production environnement
+prod.webserver.name=xyz - Production
+prod.webserver.ip=https://prod.xyz
 prod.webserver.port=80
 prod.webserver.path=api/v1/
-prod.webserver.login=login
+prod.webserver.login=logine
 prod.webserver.passwd=password
 
+# Properties for Anstel production environnement
 prod.ifxdb.name=prod
-prod.ifxdb.ip=1.2.3.5
+prod.ifxdb.ip=1.2.3.4
 prod.ifxdb.port=1526
 prod.ifxdb.dbname=bdd
-prod.ifxdb.login=user
-prod.ifxdb.passwd=passwd
+prod.ifxdb.login=login
+prod.ifxdb.passwd=password
 prod.ifxdb.informixserver=bddtcp
 prod.ifxdb.drivername=Informix
 prod.ifxdb.driverclass=com.informix.jdbc.IfxDriver
 prod.ifxdb.nb.thread=8
 
-# Properties for pre-production environnement
-pre-prod.webserver.name=Pre-Production
-pre-prod.webserver.ip=1.2.3.6
+# Properties for xyz pre-production environnement
+pre-prod.webserver.name=xyz - Pre-Production
+pre-prod.webserver.ip=https://preprod.xyz
 pre-prod.webserver.port=80
 pre-prod.webserver.path=api/v1/
 pre-prod.webserver.login=login
 pre-prod.webserver.passwd=passwd
 
+# Properties for Anstel pre-production environnement
 pre-prod.ifxdb.name=pre-prod
-pre-prod.ifxdb.ip=1.2.3.7
+pre-prod.ifxdb.ip=1.2.3.5
 pre-prod.ifxdb.port=1527
 pre-prod.ifxdb.dbname=bdd
-pre-prod.ifxdb.login=user
+pre-prod.ifxdb.login=login
 pre-prod.ifxdb.passwd=passwd
-pre-prod.ifxdb.informixserver=bddevtcp
+pre-prod.ifxdb.informixserver=bdddevtcp
 pre-prod.ifxdb.drivername=Informix
 pre-prod.ifxdb.driverclass=com.informix.jdbc.IfxDriver
 pre-prod.ifxdb.nb.thread=8

@@ -20,7 +20,7 @@ import utils.HttpsClientException;
  * HttpsClient du projet Bkgpi2a avec Unirest.
  *
  * @author Thierry Baribaud
- * @version 1.06
+ * @version 1.07
  */
 public class HttpsClient {
 
@@ -90,6 +90,11 @@ public class HttpsClient {
      * Commande pour accéder aux événement des tickets
      */
     public static final String TICKETS_CMDE = "tickets";
+
+    /**
+     * Commande pour accéder aux demandes d'intervention émises depuis l'application mobile
+     */
+    public static final String REQUESTS_CMDE = "simplifiedrequests";
 
     /**
      * Cookie pour l'authentification
@@ -404,7 +409,8 @@ public class HttpsClient {
             if (debugMode) {
                 System.out.println("headers" + headers);
             }
-            cookies = headers.get("Set-Cookie").get(0);
+//            cookies = headers.get("Set-Cookie").get(0);
+            cookies = headers.get("set-cookie").get(0);
             if (debugMode) {
                 System.out.println("cookies:" + cookies);
             }

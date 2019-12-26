@@ -6,9 +6,12 @@ import bkgpi2a.AssociateProviderContactWithPatrimony;
 import bkgpi2a.DissociateProviderContactFromPatrimony;
 import static bkgpi2a.EventType.PROVIDER_CONTACT_ASSOCIATED_WITH_PATRIMONY;
 import static bkgpi2a.EventType.PROVIDER_CONTACT_DISSOCIATED_FROM_PATRIMONY;
+import static bkgpi2a.EventType.SIMPLIFIED_REQUEST_QUALIFIED;
 import bkgpi2a.Identifiants;
 import bkgpi2a.ProviderContactAssociatedWithPatrimony;
 import bkgpi2a.ProviderContactDissociatedFromPatrimony;
+import bkgpi2a.QualifySimplifiedRequest;
+import bkgpi2a.SimplifiedRequestQualified;
 import bkgpi2a.WebServer;
 import bkgpi2a.WebServerException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,13 +26,14 @@ import utils.DBManager;
 import utils.DBServer;
 import utils.DBServerException;
 import utils.GetArgsException;
+import utils.ValidServers;
 
 /**
  * Programme Java auxiliaire de a2pi-client permettant d?échanger des données
  * entre Anstel et Performance Immo (lien montant)
  *
  * @author Thierry Baribaud
- * @version 1.06
+ * @version 1.07
  */
 public class A2PIClientAux {
 
@@ -127,7 +131,7 @@ public class A2PIClientAux {
         System.out.println("Ouverture de la connexion au site API : " + apiServer.getName());
         httpsClient = new HttpsClient(apiServer.getIpAddress(), apiId, debugMode, testMode);
         System.out.println("Connexion avec le server API ouverte.");
-        
+
         System.out.println("Authentification en cours ...");
         httpsClient.login(debugMode, testMode);
         System.out.println("Authentification réussie.");
@@ -170,12 +174,14 @@ public class A2PIClientAux {
 
             evtType = fa2pi.getA10evttype();
             if (evtType == PROVIDER_CONTACT_ASSOCIATED_WITH_PATRIMONY.getUid()) {
-                    providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
-                    associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
+                providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
+                associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
                 retcode = 1;
                 retcode = processProviderContactAssociatedWithPatrimony(httpsClient, fa2pi);
             } else if (evtType == PROVIDER_CONTACT_DISSOCIATED_FROM_PATRIMONY.getUid()) {
                 retcode = processProviderContactDissociatedFromPatrimony(httpsClient, fa2pi);
+            } else if (evtType == SIMPLIFIED_REQUEST_QUALIFIED.getUid()) {
+                retcode = processSimplifiedRequestQualified(httpsClient, fa2pi);
             }
 
             fa2pi.setA10status(retcode);
@@ -191,9 +197,9 @@ public class A2PIClientAux {
 
     }
 
-
     /**
-     * Traitement de l'association entre un fournisseur (ProviderContact) et un patrimoine (Patrimony)
+     * Traitement de l'association entre un fournisseur (ProviderContact) et un
+     * patrimoine (Patrimony)
      */
     private int processProviderContactAssociatedWithPatrimony(HttpsClient httpsClient, Fa2pi fa2pi) {
         ProviderContactAssociatedWithPatrimony providerContactAssociatedWithPatrimony;
@@ -202,12 +208,12 @@ public class A2PIClientAux {
         ObjectMapper objectMapper = new ObjectMapper();
         String json;
         int retcode = 0;
-        
+
         providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
         System.out.println("  " + providerContactAssociatedWithPatrimony);
         associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
         System.out.println("  " + associateProviderContactWithPatrimony);
-        
+
         command = HttpsClient.EVENT_API_PATH + HttpsClient.PROVIDER_CONTACTS_CMDE + "/" + providerContactAssociatedWithPatrimony.getAggregateUid();
         if (debugMode) {
             System.out.println("  Commande pour associer un fournisseur et un patrimoine : " + command);
@@ -215,7 +221,7 @@ public class A2PIClientAux {
         try {
             json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(associateProviderContactWithPatrimony);
             System.out.println("  json:" + json);
-            
+
             httpsClient.sendPatch(command, json);
 //            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
 //            System.out.println("  getResponse():" + httpsClient.getResponse());
@@ -228,7 +234,8 @@ public class A2PIClientAux {
     }
 
     /**
-     * Traitement de la dissociation entre un fournisseur (ProviderContact) et un patrimoine (Patrimony)
+     * Traitement de la dissociation entre un fournisseur (ProviderContact) et
+     * un patrimoine (Patrimony)
      */
     private int processProviderContactDissociatedFromPatrimony(HttpsClient httpsClient, Fa2pi fa2pi) {
         ProviderContactDissociatedFromPatrimony providerContactDissociatedFromPatrimony;
@@ -237,12 +244,12 @@ public class A2PIClientAux {
         ObjectMapper objectMapper = new ObjectMapper();
         String json;
         int retcode = 0;
-        
+
         providerContactDissociatedFromPatrimony = new ProviderContactDissociatedFromPatrimony(fa2pi);
         System.out.println("  " + providerContactDissociatedFromPatrimony);
         dissociateProviderContactFromPatrimony = new DissociateProviderContactFromPatrimony(providerContactDissociatedFromPatrimony);
         System.out.println("  " + dissociateProviderContactFromPatrimony);
-        
+
         command = HttpsClient.EVENT_API_PATH + HttpsClient.PROVIDER_CONTACTS_CMDE + "/" + providerContactDissociatedFromPatrimony.getAggregateUid();
         if (debugMode) {
             System.out.println("  Commande pour dissocier un fournisseur et un patrimoine : " + command);
@@ -250,7 +257,43 @@ public class A2PIClientAux {
         try {
             json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dissociateProviderContactFromPatrimony);
             System.out.println("  json:" + json);
-            
+
+            httpsClient.sendPatch(command, json);
+//            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
+//            System.out.println("  getResponse():" + httpsClient.getResponse());
+            retcode = 1;
+        } catch (Exception ex) {
+            retcode = -1;
+            Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return retcode;
+    }
+
+    /**
+     * Traitement de la qualification d'une demande d'intervention émise depuis
+     * l'application mobile
+     */
+    private int processSimplifiedRequestQualified(HttpsClient httpsClient, Fa2pi fa2pi) {
+        SimplifiedRequestQualified simplifiedRequestQualified;
+        QualifySimplifiedRequest qualifySimplifiedRequest;
+        String command;
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json;
+        int retcode = 0;
+
+        simplifiedRequestQualified = new SimplifiedRequestQualified(fa2pi);
+        System.out.println("  " + simplifiedRequestQualified);
+        qualifySimplifiedRequest = new QualifySimplifiedRequest(simplifiedRequestQualified);
+        System.out.println("  " + qualifySimplifiedRequest);
+
+        command = HttpsClient.EVENT_API_PATH + HttpsClient.REQUESTS_CMDE + "/" + simplifiedRequestQualified.getAggregateUid();
+        if (debugMode) {
+            System.out.println("  Commande pour qualifier une demande d'intervention : " + command);
+        }
+        try {
+            json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(qualifySimplifiedRequest);
+            System.out.println("  json:" + json);
+
             httpsClient.sendPatch(command, json);
 //            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
 //            System.out.println("  getResponse():" + httpsClient.getResponse());
@@ -399,7 +442,7 @@ public class A2PIClientAux {
             switch (currentParam) {
                 case "-apiserver":
                     if (ip1 < n) {
-                        if ("pre-prod".equals(nextParam) || "prod".equals(nextParam)) {
+                        if (ValidServers.isAValidServer(nextParam)) {
                             this.apiServerType = args[ip1];
                         } else {
                             throw new GetArgsException("ERREUR : Mauvais serveur API : " + nextParam);
@@ -411,7 +454,7 @@ public class A2PIClientAux {
                     break;
                 case "-ifxserver":
                     if (ip1 < n) {
-                        if ("pre-prod".equals(nextParam) || "prod".equals(nextParam)) {
+                        if (ValidServers.isAValidServer(nextParam)) {
                             this.ifxDbServerType = nextParam;
                         } else {
                             throw new GetArgsException("ERREUR : Mauvais serveur Informix : " + nextParam);
@@ -455,8 +498,8 @@ public class A2PIClientAux {
      * Affiche le mode d'utilisation du programme.
      */
     public static void usage() {
-        System.out.println("Usage : java A2PIClientAux [-apiserver prod|pre-prod]"
-                + " [-ifxdb prod|pre-prod]"
+        System.out.println("Usage : java A2PIClientAux [-apiserver apiserver]"
+                + " [-ifxserver dbserver]"
                 + " [-limit limit]"
                 + " [-d] [-t]");
     }
