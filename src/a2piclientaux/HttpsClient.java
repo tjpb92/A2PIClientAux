@@ -20,7 +20,7 @@ import utils.HttpsClientException;
  * HttpsClient du projet Bkgpi2a avec Unirest.
  *
  * @author Thierry Baribaud
- * @version 1.07
+ * @version 1.08
  */
 public class HttpsClient {
 
@@ -167,7 +167,24 @@ public class HttpsClient {
      */
     public void sendGet(String Command) throws Exception {
 
-        throw new HttpsClientException("sendGet() à réécrire");
+        HttpResponse<JsonNode> jsonResponse;
+
+        jsonResponse = Unirest.get(baseUrl + Command)
+                .header("User-Agent", USER_AGENT)
+                .header("Content-Type", "application/json")
+                .header("Set-Cookie", cookies)
+                .asJson();
+
+        responseCode = jsonResponse.getStatus();
+        response = jsonResponse.getBody().toString();
+        if (debugMode) {
+            System.out.println("responseCode:" + responseCode);
+            System.out.println("response:" + response);
+        }
+
+        if (responseCode != 200) {
+            throw new HttpsClientException();
+        }
     }
 
     /**

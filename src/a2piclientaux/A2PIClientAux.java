@@ -33,7 +33,7 @@ import utils.ValidServers;
  * entre Anstel et Performance Immo (lien montant)
  *
  * @author Thierry Baribaud
- * @version 1.07
+ * @version 1.08
  */
 public class A2PIClientAux {
 
@@ -176,7 +176,6 @@ public class A2PIClientAux {
             if (evtType == PROVIDER_CONTACT_ASSOCIATED_WITH_PATRIMONY.getUid()) {
                 providerContactAssociatedWithPatrimony = new ProviderContactAssociatedWithPatrimony(fa2pi);
                 associateProviderContactWithPatrimony = new AssociateProviderContactWithPatrimony(providerContactAssociatedWithPatrimony);
-                retcode = 1;
                 retcode = processProviderContactAssociatedWithPatrimony(httpsClient, fa2pi);
             } else if (evtType == PROVIDER_CONTACT_DISSOCIATED_FROM_PATRIMONY.getUid()) {
                 retcode = processProviderContactDissociatedFromPatrimony(httpsClient, fa2pi);
@@ -184,13 +183,18 @@ public class A2PIClientAux {
                 retcode = processSimplifiedRequestQualified(httpsClient, fa2pi);
             }
 
-            fa2pi.setA10status(retcode);
-            if (retcode != 1) {
-                fa2pi.setA10nberr(1);
+            if (retcode != 0) {
+                if (retcode == 1) {
+                    fa2pi.setA10status(retcode);
+                } else {
+                    fa2pi.setA10nberr(fa2pi.getA10nberr() + 1);
+                    if (fa2pi.getA10nberr() == 5) {
+                        fa2pi.setA10status(retcode);
+                    }
+                }
+                fa2pi.setA10update(new Timestamp(new java.util.Date().getTime()));
+                fa2piDAO.update(fa2pi);
             }
-
-            fa2pi.setA10update(new Timestamp(new java.util.Date().getTime()));
-            fa2piDAO.update(fa2pi);
         }
         fa2piDAO.closeSelectPreparedStatement();
         fa2piDAO.closeUpdatePreparedStatement();
@@ -283,25 +287,59 @@ public class A2PIClientAux {
 
         simplifiedRequestQualified = new SimplifiedRequestQualified(fa2pi);
         System.out.println("  " + simplifiedRequestQualified);
-        qualifySimplifiedRequest = new QualifySimplifiedRequest(simplifiedRequestQualified);
-        System.out.println("  " + qualifySimplifiedRequest);
+        if (isTicketOpened(httpsClient, simplifiedRequestQualified.getTicketUid())) {
+            qualifySimplifiedRequest = new QualifySimplifiedRequest(simplifiedRequestQualified);
+            System.out.println("  " + qualifySimplifiedRequest);
 
-        command = HttpsClient.EVENT_API_PATH + HttpsClient.REQUESTS_CMDE + "/" + simplifiedRequestQualified.getAggregateUid();
-        if (debugMode) {
-            System.out.println("  Commande pour qualifier une demande d'intervention : " + command);
-        }
-        try {
-            json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(qualifySimplifiedRequest);
-            System.out.println("  json:" + json);
+            command = HttpsClient.EVENT_API_PATH + HttpsClient.REQUESTS_CMDE + "/" + simplifiedRequestQualified.getAggregateUid();
+            if (debugMode) {
+                System.out.println("  Commande pour qualifier une demande d'intervention : " + command);
+            }
+            try {
+                json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(qualifySimplifiedRequest);
+                System.out.println("  json:" + json);
 
-            httpsClient.sendPatch(command, json);
+                httpsClient.sendPatch(command, json);
 //            System.out.println("  getResponseCode():" + httpsClient.getResponseCode());
 //            System.out.println("  getResponse():" + httpsClient.getResponse());
-            retcode = 1;
-        } catch (Exception ex) {
-            retcode = -1;
-            Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, ex);
+                retcode = 1;
+            } catch (Exception ex) {
+                retcode = -1;
+                Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            System.out.println("  Ticket " + simplifiedRequestQualified.getTicketUid() + " not already opened, retrying later ...");
         }
+        return retcode;
+    }
+
+    /**
+     * Fonction qui vérifie si le ticket associé à la demande d'intervention est
+     * ouvert ou non
+     */
+    private boolean isTicketOpened(HttpsClient httpsClient, String ticketUid) {
+        boolean retcode;
+        String command;
+        int responseCode;
+
+        retcode = false;
+        command = HttpsClient.REST_API_PATH + HttpsClient.TICKETS_CMDE + "/" + ticketUid;
+        if (debugMode) {
+            System.out.println("  Commande pour récupérer le ticket : " + command);
+        }
+        try {
+            httpsClient.sendGet(command);
+            responseCode = httpsClient.getResponseCode();
+            retcode = (responseCode == 200);
+        } catch (Exception exception) {
+//                Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, exception);
+            System.out.println("ERREUR : httpsClient.sendGet " + exception);
+            responseCode = 0;
+        }
+
+//      A retirer plus tard ...        
+//        retcode = false;
+
         return retcode;
     }
 
