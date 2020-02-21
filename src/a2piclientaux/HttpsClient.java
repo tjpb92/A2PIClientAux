@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import utils.HttpsClientException;
@@ -20,7 +21,7 @@ import utils.HttpsClientException;
  * HttpsClient du projet Bkgpi2a avec Unirest.
  *
  * @author Thierry Baribaud
- * @version 1.08
+ * @version 1.09
  */
 public class HttpsClient {
 
@@ -408,6 +409,8 @@ public class HttpsClient {
     public void login(boolean debugMode, boolean testMode) throws UnirestException, HttpsClientException {
         HttpResponse<JsonNode> jsonResponse;
         Headers headers;
+        List<String> temp;
+        String method;
 
         jsonResponse = Unirest.post(baseUrl + REST_API_PATH + LOGIN_CMDE)
                 .header("User-Agent", USER_AGENT)
@@ -426,10 +429,19 @@ public class HttpsClient {
             if (debugMode) {
                 System.out.println("headers" + headers);
             }
-//            cookies = headers.get("Set-Cookie").get(0);
-            cookies = headers.get("set-cookie").get(0);
+
+            method="Set-Cookie";
+            temp = headers.get(method);
+            if (temp != null) {
+                cookies = temp.get(0);
+            } else {
+                method="set-cookie";
+                temp = headers.get(method);
+            } if (temp != null) {
+                cookies = temp.get(0);
+            }
             if (debugMode) {
-                System.out.println("cookies:" + cookies);
+                System.out.println("cookies(" + method + "]):" + cookies);
             }
         } else {
             throw new HttpsClientException();
