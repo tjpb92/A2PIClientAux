@@ -29,11 +29,11 @@ import utils.GetArgsException;
 import utils.ValidServers;
 
 /**
- * Programme Java auxiliaire de a2pi-client permettant d?échanger des données
+ * Programme Java auxiliaire de a2pi-client permettant d'échanger des données
  * entre Anstel et Performance Immo (lien montant)
  *
  * @author Thierry Baribaud
- * @version 1.08
+ * @version 1.10
  */
 public class A2PIClientAux {
 
@@ -339,7 +339,6 @@ public class A2PIClientAux {
 
 //      A retirer plus tard ...        
 //        retcode = false;
-
         return retcode;
     }
 
@@ -551,7 +550,7 @@ public class A2PIClientAux {
         System.out.println("Lancement de A2PIClientAux ...");
         try {
             a2PIClientAux = new A2PIClientAux(args);
-            System.out.println("Fin de A2ITclient.");
+            System.out.println("Fin de A2PIclientAux.");
         } catch (GetArgsException | IOException | DBServerException | ClassNotFoundException | SQLException | WebServerException exception) {
             Logger.getLogger(A2PIClientAux.class.getName()).log(Level.SEVERE, null, exception);
         } catch (Exception ex) {
